@@ -1,0 +1,10 @@
+/src/traces/*
+*.o
+*.d
+.DS_Store
+.vscode/
+build/
+bin/
+out/
+cmake-build-debug/
+cpu_simulator
