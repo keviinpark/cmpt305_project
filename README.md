@@ -1,4 +1,4 @@
-CMPT 305 Project
+CMPT 305 Project  
 Simple Processor Pipeline Simulator
 
 Pre-requisites:
