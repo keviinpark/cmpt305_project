@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 
+
 int main(int argc, char* argv[]) {
     // Expecting: ./cpu_simulator trace_file_path start_inst inst_count D
     if (argc != 5) {
