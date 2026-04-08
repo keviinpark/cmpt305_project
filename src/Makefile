@@ -20,3 +20,6 @@ Simulation.o: Simulation.cpp Simulation.h Pipeline.h Instruction.h
 
 clean:
 	rm -f $(OBJS) $(TARGET)
+
+smoke-test:
+	bash ../tests/smoke_test.sh

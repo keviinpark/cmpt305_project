@@ -1,6 +1,9 @@
-#include <vector>
+#ifndef PIPELINE_H
+#define PIPELINE_H
+
 #include <deque>
 #include <unordered_map>
+#include <vector>
 #include "Instruction.h"
 
 
@@ -22,6 +25,10 @@ class Pipeline
 
         bool branch_stall;
 
+        bool check_unit_availability(int instruction_type) const;
+        void reserve_unit(int instruction_type);
+        void clear_unit_lock(const Instruction* instruction);
+
         
     public:
         Pipeline () : alu_busy(false), fp_busy(false), branch_busy(false), l1_read_busy(false), l1_write_busy(false), branch_stall(false) {}
@@ -41,4 +48,11 @@ class Pipeline
         void process_MEM();
         void process_WB();
 
+        bool is_stalled() const;
+        void set_branch_stall(bool stall);
+        void insert_instruction(Instruction* instruction);
+        bool is_done() const;
+
 };
+
+    #endif /* PIPELINE_H */

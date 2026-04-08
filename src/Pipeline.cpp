@@ -1,5 +1,82 @@
 #include "Pipeline.h"
 
+bool Pipeline::check_unit_availability(int instruction_type) const
+{
+    switch (instruction_type)
+    {
+        case 1: return !alu_busy;
+        case 2: return !fp_busy;
+        case 3: return !branch_busy;
+        case 4: return !l1_read_busy;
+        case 5: return !l1_write_busy;
+        default: return true;
+    }
+}
+
+void Pipeline::reserve_unit(int instruction_type)
+{
+    switch (instruction_type)
+    {
+        case 1: alu_busy = true; break;
+        case 2: fp_busy = true; break;
+        case 3: branch_busy = true; break;
+        case 4: l1_read_busy = true; break;
+        case 5: l1_write_busy = true; break;
+        default: break;
+    }
+}
+
+void Pipeline::clear_unit_lock(const Instruction* instruction)
+{
+    if (instruction == nullptr)
+    {
+        return;
+    }
+
+    switch (instruction->instruction_type)
+    {
+        case 1: alu_busy = false; break;
+        case 2: fp_busy = false; break;
+        case 3: branch_busy = false; break;
+        case 4: l1_read_busy = false; break;
+        case 5: l1_write_busy = false; break;
+        default: break;
+    }
+}
+
+bool Pipeline::is_stalled() const
+{
+    return branch_stall;
+}
+
+void Pipeline::set_branch_stall(bool stall)
+{
+    branch_stall = stall;
+}
+
+void Pipeline::insert_instruction(Instruction* instruction)
+{
+    if (instruction == nullptr)
+    {
+        return;
+    }
+
+    instruction->current_stage = 0;
+    pipeline_stages[0].push_back(instruction);
+}
+
+bool Pipeline::is_done() const
+{
+    for (const auto& stage : pipeline_stages)
+    {
+        if (!stage.empty())
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 
 void Pipeline::process_IF()
 {
@@ -64,9 +141,9 @@ void Pipeline::process_EX()
     {
         Instruction* instruction = pipeline_stages[2].front();
 
-        // If instruction is a branch
+        // Resolve branch and release fetch stall after EX.
         if (instruction->instruction_type == 3) {
-            branch_stall_active = false;
+            branch_stall = false;
         }
 
         instruction->current_stage = 3;
@@ -103,10 +180,6 @@ void Pipeline::process_WB()
     int retired = 0;
     while (!pipeline_stages[4].empty() && retired < 2) {
         Instruction* instruction = pipeline_stages[4].front();
-        
-        // Update Stats
-        stats.instruction_histogram[instruction->instruction_type]++;
-        stats.total_retired++;
 
         // Free up structural units (if they weren't freed in EX/MEM)
         // Note: In this simple model, we clear busy flags here 
