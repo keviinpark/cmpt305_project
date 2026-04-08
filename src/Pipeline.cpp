@@ -61,7 +61,7 @@ void Pipeline::insert_instruction(Instruction* instruction)
         return;
     }
 
-    instruction->current_stage = 0;
+    instruction->current_stage = NOT_STARTED;
     pipeline_stages[0].push_back(instruction);
 }
 
@@ -90,12 +90,11 @@ void Pipeline::process_IF()
     while (!pipeline_stages[0].empty() && moved < 2)
     {
         Instruction* instruction = pipeline_stages[0].front();
-        instruction->current_stage = 1; // Move to ID stage
+        instruction->current_stage = IF_STAGE;
         pipeline_stages[1].push_back(instruction);
         pipeline_stages[0].pop_front();
         moved++;
     }
-    
 }
 
 void Pipeline::process_ID()
@@ -104,11 +103,13 @@ void Pipeline::process_ID()
     while (!pipeline_stages[1].empty() && moved < 2)
     {
         Instruction* instruction = pipeline_stages[1].front();
+        instruction->current_stage = ID_STAGE;
 
+        /* Check data hazards */
         bool data_ready = true;
         for (Instruction* dependency : instruction->dependencies)
         {
-            if (dependency->current_stage < 4)
+            if (dependency->current_stage < MEM_STAGE)
             {
                 data_ready = false;
                 break;
@@ -121,7 +122,6 @@ void Pipeline::process_ID()
         {
             reserve_unit(instruction->instruction_type);
 
-            instruction->current_stage = 2; // Move to EX stage
             pipeline_stages[2].push_back(instruction);
             pipeline_stages[1].pop_front();
             moved++;
@@ -140,13 +140,12 @@ void Pipeline::process_EX()
     while (!pipeline_stages[2].empty() && moved < 2)
     {
         Instruction* instruction = pipeline_stages[2].front();
+        instruction->current_stage = EX_STAGE;
 
-        // Resolve branch and release fetch stall after EX.
-        if (instruction->instruction_type == 3) {
+        if (instruction->instruction_type == BRANCH_INST) {
             branch_stall = false;
         }
 
-        instruction->current_stage = 3;
         pipeline_stages[3].push_back(instruction);
         pipeline_stages[2].pop_front();
         moved++;
@@ -158,17 +157,16 @@ void Pipeline::process_MEM()
     int moved = 0;
     while (!pipeline_stages[3].empty() && moved < 2) {
         Instruction* instruction = pipeline_stages[3].front();
+        instruction->current_stage = MEM_STAGE;
 
-        // Structural Hazard: Only 1 Read Port and 1 Write Port
-        if (instruction->instruction_type == 4 && l1_read_busy) break;
-        if (instruction->instruction_type == 5 && l1_write_busy) break;
+        // Structural Hazard
+        if (instruction->instruction_type == LOAD_INST && l1_read_busy) break;
+        if (instruction->instruction_type == STORE_INST && l1_write_busy) break;
 
         // Lock ports
-        if (instruction->instruction_type == 4) l1_read_busy = true;
-        if (instruction->instruction_type == 5) l1_write_busy = true;
+        if (instruction->instruction_type == LOAD_INST) l1_read_busy = true;
+        if (instruction->instruction_type == STORE_INST) l1_write_busy = true;
 
-        // Move to WB
-        instruction->current_stage = 4;
         pipeline_stages[4].push_back(instruction);
         pipeline_stages[3].pop_front();
         moved++;
@@ -180,13 +178,10 @@ void Pipeline::process_WB()
     int retired = 0;
     while (!pipeline_stages[4].empty() && retired < 2) {
         Instruction* instruction = pipeline_stages[4].front();
+        instruction->current_stage = WB_STAGE; // Retired
 
-        // Free up structural units (if they weren't freed in EX/MEM)
-        // Note: In this simple model, we clear busy flags here 
-        // to allow new instructions to enter EX in the NEXT cycle.
         clear_unit_lock(instruction);
-
-        instruction->current_stage = 5; // Retired
+        
         pipeline_stages[4].pop_front();
         retired++;
     }

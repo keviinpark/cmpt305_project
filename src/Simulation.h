@@ -55,14 +55,20 @@ class Simulation
                         }
 
                         Instruction* next_instruction = new Instruction();
+
+                        /* To-do: input parsing */
                         next_instruction->program_counter = static_cast<uint32_t>(start_inst + issued);
-                        next_instruction->instruction_type = 1;
+                        next_instruction->instruction_type = static_cast<InstructionType>((issued % 5) + 1);
+                        next_instruction->dependencies = {};
+                        /* Instruction current stage is determined by pipeline*/
+
                         instructions.push_back(next_instruction);
 
                         cpu.insert_instruction(next_instruction);
                         issued++;
 
-                        if (next_instruction->instruction_type == 3)
+                        /* Any branch instruction delays instruction fetch until after branch executes */
+                        if (next_instruction->instruction_type == BRANCH_INST)
                         {
                             cpu.set_branch_stall(true);
                             break;
