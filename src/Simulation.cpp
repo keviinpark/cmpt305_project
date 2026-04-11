@@ -1,6 +1,8 @@
 #include "Simulation.h"
 
+#include <cstdlib>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -18,6 +20,25 @@ std::string trim(const std::string& text)
 
 	const std::size_t last = text.find_last_not_of(" \t\r\n");
 	return text.substr(first, last - first + 1);
+}
+
+long long get_parse_debug_limit()
+{
+	const char* env_value = std::getenv("SIM_DEBUG_PARSE_N");
+	if (env_value == nullptr)
+	{
+		return 0;
+	}
+
+	try
+	{
+		const long long value = std::stoll(env_value);
+		return (value > 0) ? value : 0;
+	}
+	catch (const std::exception&)
+	{
+		return 0;
+	}
 }
 }
 
@@ -104,6 +125,13 @@ bool Simulation::parse_trace_line(const std::string& line,
 
 bool Simulation::parse_trace_window()
 {
+	const long long parse_debug_limit = get_parse_debug_limit();
+	if (parse_debug_limit > 0)
+	{
+		std::cerr << "[parse-debug] showing first " << parse_debug_limit
+				  << " parsed instructions" << std::endl;
+	}
+
 	std::ifstream input(trace_file);
 	if (!input.is_open())
 	{
@@ -155,6 +183,16 @@ bool Simulation::parse_trace_window()
 
 		instructions.push_back(instruction);
 		last_instance[pc] = instruction;
+
+		if (parse_debug_limit > 0 && loaded < parse_debug_limit)
+		{
+			std::cerr << "[parse-debug] idx=" << trace_index
+					  << " pc=0x" << std::hex << std::uppercase << instruction->program_counter
+					  << std::dec << " type=" << instruction->instruction_type
+					  << " dep-count=" << instruction->dependencies.size()
+					  << " dep-pc-count=" << dependency_pcs.size()
+					  << std::endl;
+		}
 
 		++trace_index;
 		++loaded;
