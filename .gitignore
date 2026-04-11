@@ -8,7 +8,15 @@ bin/
 out/
 cmake-build-debug/
 cpu_simulator
-traces/
-*.gz
 proj
-*.o
+
+# Ignore trace files
+compute_fp_1
+compute_int_0
+srv_0
+
+# Ignore compressed versions
+*.gz
+
+# Ignore large trace-like files
+*.trace
