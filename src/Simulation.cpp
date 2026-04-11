@@ -4,6 +4,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -208,8 +209,66 @@ bool Simulation::parse_trace_window()
 	return !instructions.empty();
 }
 
+double Simulation::get_frequency_ghz(int depth_config)
+{
+	switch (depth_config)
+	{
+		case 1: return 1.0;
+		case 2: return 1.2;
+		case 3: return 1.7;
+		case 4: return 1.8;
+		default: return 1.0;
+	}
+}
+
+void Simulation::print_final_report(std::size_t simulated_count) const
+{
+	std::size_t histogram[6] = {0, 0, 0, 0, 0, 0};
+	for (const Instruction* inst : instructions)
+	{
+		if (inst == nullptr)
+		{
+			continue;
+		}
+
+		const int type = static_cast<int>(inst->instruction_type);
+		if (type >= 1 && type <= 5)
+		{
+			histogram[type]++;
+		}
+	}
+
+	const double freq_ghz = get_frequency_ghz(pipeline_depth);
+	const double cycle_time_seconds = 1.0 / (freq_ghz * 1e9);
+	const double exec_time_ms = static_cast<double>(cycle_count) * cycle_time_seconds * 1000.0;
+
+	const double total = (simulated_count == 0) ? 1.0 : static_cast<double>(simulated_count);
+
+	std::cout << "=== Simulation Report ===" << std::endl;
+	std::cout << "Trace file: " << trace_file << std::endl;
+	std::cout << "Start instruction: " << start_inst << std::endl;
+	std::cout << "Simulated instruction count: " << simulated_count << std::endl;
+	std::cout << "Pipeline depth config (D): " << pipeline_depth << std::endl;
+	std::cout << "Cycle count: " << cycle_count << std::endl;
+	std::cout << std::fixed << std::setprecision(6)
+			  << "Execution time (ms): " << exec_time_ms << std::endl;
+
+	std::cout << std::setprecision(2);
+	std::cout << "%int: " << (100.0 * static_cast<double>(histogram[INT_INST]) / total) << std::endl;
+	std::cout << "%FP: " << (100.0 * static_cast<double>(histogram[FP_INST]) / total) << std::endl;
+	std::cout << "%branch: " << (100.0 * static_cast<double>(histogram[BRANCH_INST]) / total) << std::endl;
+	std::cout << "%load: " << (100.0 * static_cast<double>(histogram[LOAD_INST]) / total) << std::endl;
+	std::cout << "%store: " << (100.0 * static_cast<double>(histogram[STORE_INST]) / total) << std::endl;
+}
+
 void Simulation::run_simulation()
 {
+	if (pipeline_depth < 1 || pipeline_depth > 4)
+	{
+		std::cerr << "Error: pipeline depth configuration D must be between 1 and 4." << std::endl;
+		return;
+	}
+
 	if (!parse_trace_window())
 	{
 		std::cerr << "Error: no instructions loaded for simulation." << std::endl;
@@ -240,7 +299,13 @@ void Simulation::run_simulation()
 		}
 
 		++cycle_count;
+
+		if (cycle_count == std::numeric_limits<long long>::max())
+		{
+			std::cerr << "Error: cycle counter overflow." << std::endl;
+			return;
+		}
 	}
 
-	(void)pipeline_depth;
+	print_final_report(total);
 }

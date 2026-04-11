@@ -2,6 +2,7 @@
 #define SIMULATION_H
 
 #include <cstdint>
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -27,6 +28,8 @@ class Simulation
                                      uint32_t& program_counter,
                                      int& instruction_type,
                                      std::vector<uint32_t>& dependency_pcs);
+        void print_final_report(std::size_t simulated_count) const;
+        static double get_frequency_ghz(int depth_config);
 
     public:
         Simulation(const std::string& trace_file, long long start_inst, long long inst_count, int pipeline_depth);
