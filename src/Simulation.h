@@ -15,13 +15,13 @@
 class Simulation
 {
     private:
-        Pipeline cpu;
         std::vector<Instruction*> instructions;
         std::string trace_file;
         long long start_inst;
         long long inst_count;
         int pipeline_depth;
         long long cycle_count;
+        Pipeline cpu;
 
         bool parse_trace_window();
         static bool parse_trace_line(const std::string& line,

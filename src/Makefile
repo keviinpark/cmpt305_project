@@ -1,6 +1,6 @@
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++17 -O3
-TARGET = cpu_simulator
+TARGET = proj
 
 OBJS = main.o Pipeline.o Simulation.o
 

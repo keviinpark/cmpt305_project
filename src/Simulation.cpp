@@ -51,7 +51,9 @@ Simulation::Simulation(const std::string& trace_file,
 	  start_inst(start_inst),
 	  inst_count(inst_count),
 	  pipeline_depth(pipeline_depth),
-	  cycle_count(0)
+	  cycle_count(0),
+	  cpu(pipeline_depth)
+
 {
 }
 

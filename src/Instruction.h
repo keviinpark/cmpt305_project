@@ -42,6 +42,9 @@ struct Instruction
     std::vector<Instruction*> dependencies;
 
     InstructionStage current_stage = NOT_STARTED; 
+
+    /* Number of cycles remaining in the current stage depending on pipeline depth */
+    int cycles_remaining = 0;
 }; 
 
 

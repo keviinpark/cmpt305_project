@@ -1,5 +1,27 @@
 #include "Pipeline.h"
 
+int Pipeline::get_ex_cycles(int instruction_type)
+{
+    switch (instruction_type)
+    {
+        case 2:
+            return (depth_config == 2 || depth_config == 4) ? 2 : 1;
+        default: 
+            return 1;
+    }
+}
+
+int Pipeline::get_mem_cycles(int instruction_type)
+{
+    switch (instruction_type)
+    {
+        case 4:
+            return (depth_config == 3 || depth_config == 4) ? 3 : 1;
+        default: 
+            return 1;
+    }
+}
+
 bool Pipeline::check_unit_availability(int instruction_type) const
 {
     switch (instruction_type)
@@ -135,7 +157,18 @@ void Pipeline::process_EX()
     while (!pipeline_stages[2].empty() && moved < 2)
     {
         Instruction* instruction = pipeline_stages[2].front();
-        instruction->current_stage = EX_STAGE;
+        if (instruction->current_stage != EX_STAGE)
+        {
+            instruction->current_stage = EX_STAGE;
+            instruction->cycles_remaining = get_ex_cycles(instruction->instruction_type) - 1;
+        }
+
+        if (instruction->cycles_remaining > 0)
+        {
+            instruction->cycles_remaining--;
+            // Stall until EX cycles are done
+            break;
+        }
 
         if (instruction->instruction_type == BRANCH_INST) {
             branch_stall = false;
@@ -155,14 +188,26 @@ void Pipeline::process_MEM()
     int moved = 0;
     while (!pipeline_stages[3].empty() && moved < 2) {
         Instruction* instruction = pipeline_stages[3].front();
-        instruction->current_stage = MEM_STAGE;
+        if (instruction->current_stage != MEM_STAGE)
+        {
+            // Structural hazard: max one load and one store entering MEM per cycle.
+            if (instruction->instruction_type == LOAD_INST && read_port_used) break;
+            if (instruction->instruction_type == STORE_INST && write_port_used) break;
 
-    // Structural hazard: max one load and one store entering MEM per cycle.
-    if (instruction->instruction_type == LOAD_INST && read_port_used) break;
-    if (instruction->instruction_type == STORE_INST && write_port_used) break;
+            instruction->current_stage = MEM_STAGE;
+            instruction->cycles_remaining = get_mem_cycles(instruction->instruction_type) - 1;
+        }
 
-    if (instruction->instruction_type == LOAD_INST) read_port_used = true;
-    if (instruction->instruction_type == STORE_INST) write_port_used = true;
+        // Mark port as used whether this is a fresh arrival or a continuation
+        if (instruction->instruction_type == LOAD_INST)  read_port_used  = true;
+        if (instruction->instruction_type == STORE_INST) write_port_used = true;
+
+        if (instruction->cycles_remaining > 0)
+        {
+            instruction->cycles_remaining--;
+            // Stall until MEM cycles are done
+            break;
+        }
 
         pipeline_stages[4].push_back(instruction);
         pipeline_stages[3].pop_front();

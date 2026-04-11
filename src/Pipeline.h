@@ -25,13 +25,18 @@ class Pipeline
 
         bool branch_stall;
 
+        int depth_config;
+        int get_ex_cycles(int instruction_type);
+        int get_mem_cycles(int instruction_type);
+
         bool check_unit_availability(int instruction_type) const;
         void reserve_unit(int instruction_type);
         void clear_unit_lock(const Instruction* instruction);
 
+
         
     public:
-        Pipeline () : alu_busy(false), fp_busy(false), branch_busy(false), l1_read_busy(false), l1_write_busy(false), branch_stall(false) {}
+        Pipeline (int d_config) : alu_busy(false), fp_busy(false), branch_busy(false), l1_read_busy(false), l1_write_busy(false), branch_stall(false), depth_config(d_config) {}
 
         void advance_pipeline()
         {
