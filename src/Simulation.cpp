@@ -170,7 +170,7 @@ bool Simulation::parse_trace_window()
 
 		Instruction* instruction = new Instruction();
 		instruction->program_counter = pc;
-		instruction->instruction_type = type;
+		instruction->instruction_type = static_cast<InstructionType>(type);
 
 		for (uint32_t dep_pc : dependency_pcs)
 		{
@@ -231,7 +231,7 @@ void Simulation::run_simulation()
 				cpu.insert_instruction(next_instruction);
 				++issued;
 
-				if (next_instruction->instruction_type == 3)
+				if (next_instruction->instruction_type == BRANCH_INST)
 				{
 					cpu.set_branch_stall(true);
 					break;

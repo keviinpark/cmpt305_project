@@ -4,13 +4,12 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+
 #include "Instruction.h"
 #include "Pipeline.h"
 
-
 /**
  * This class represents the overall simulation.
- * 
  */
 class Simulation
 {

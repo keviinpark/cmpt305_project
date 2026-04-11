@@ -3,6 +3,25 @@
 
 #include <cstdint>
 #include <vector>
+#include <stdio.h>
+
+
+typedef enum {
+    INT_INST = 1,
+    FP_INST = 2,
+    BRANCH_INST = 3,
+    LOAD_INST = 4, 
+    STORE_INST = 5
+} InstructionType;
+
+typedef enum {
+    NOT_STARTED = 0,
+    IF_STAGE = 1,
+    ID_STAGE = 2,
+    EX_STAGE = 3,
+    MEM_STAGE = 4,
+    WB_STAGE = 5
+} InstructionStage;
 
 
 /**
@@ -12,16 +31,9 @@
 struct Instruction
 {
     /* Instruction address in hex */
-    uint32_t program_counter;
+    uint64_t program_counter;
 
-    /**
-     * 1: Integer instruction
-     * 2: Floating point instruction
-     * 3: Branch
-     * 4: Load
-     * 5: Store
-     */
-    int instruction_type;
+    InstructionType instruction_type;
 
     /** 
      * List of instructions that this instruction depends on 
@@ -29,15 +41,7 @@ struct Instruction
      */
     std::vector<Instruction*> dependencies;
 
-    /**
-     * 0: Not started
-     * 1: Instruction Fetch (IF)
-     * 2: Instruction Decode and Read Operands (ID)
-     * 3: Execute (EX)
-     * 4: Memory Access (MEM)
-     * 5: Write Back Results/Retire (WB)
-     */
-    int current_stage = 0; 
+    InstructionStage current_stage = NOT_STARTED; 
 }; 
 
 
