@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show compiler
+        run: |
+          g++ --version
+          make --version
+
+      - name: Build
+        working-directory: src
+        run: make
+
+      - name: Create tiny trace for CI
+        run: |
+          cat > tests/ci_tiny_trace.csv << 'EOF'
+          1000,1
+          1004,2,1000
+          1008,4,1004
+          100C,5,1008
+          1010,3,1000
+          1014,1,1010
+          EOF
+
+      - name: Smoke run (D=1)
+        run: ./src/cpu_simulator tests/ci_tiny_trace.csv 0 6 1
+
+      - name: Smoke run with offset (D=2)
+        run: ./src/cpu_simulator tests/ci_tiny_trace.csv 3 3 2

@@ -8,3 +8,7 @@ bin/
 out/
 cmake-build-debug/
 cpu_simulator
+traces/
+*.gz
+proj
+*.o
