@@ -7,8 +7,8 @@ bool Pipeline::check_unit_availability(int instruction_type) const
         case 1: return !alu_busy;
         case 2: return !fp_busy;
         case 3: return !branch_busy;
-        case 4: return !l1_read_busy;
-        case 5: return !l1_write_busy;
+        case 4: return true;
+        case 5: return true;
         default: return true;
     }
 }
@@ -20,8 +20,8 @@ void Pipeline::reserve_unit(int instruction_type)
         case 1: alu_busy = true; break;
         case 2: fp_busy = true; break;
         case 3: branch_busy = true; break;
-        case 4: l1_read_busy = true; break;
-        case 5: l1_write_busy = true; break;
+        case 4: break;
+        case 5: break;
         default: break;
     }
 }
@@ -80,11 +80,6 @@ bool Pipeline::is_done() const
 
 void Pipeline::process_IF()
 {
-    if (branch_stall)
-    {
-        return;
-    }
-
     int moved = 0;
 
     while (!pipeline_stages[0].empty() && moved < 2)
@@ -154,18 +149,20 @@ void Pipeline::process_EX()
 
 void Pipeline::process_MEM()
 {
+    bool read_port_used = false;
+    bool write_port_used = false;
+
     int moved = 0;
     while (!pipeline_stages[3].empty() && moved < 2) {
         Instruction* instruction = pipeline_stages[3].front();
         instruction->current_stage = MEM_STAGE;
 
-        // Structural Hazard
-        if (instruction->instruction_type == LOAD_INST && l1_read_busy) break;
-        if (instruction->instruction_type == STORE_INST && l1_write_busy) break;
+    // Structural hazard: max one load and one store entering MEM per cycle.
+    if (instruction->instruction_type == LOAD_INST && read_port_used) break;
+    if (instruction->instruction_type == STORE_INST && write_port_used) break;
 
-        // Lock ports
-        if (instruction->instruction_type == LOAD_INST) l1_read_busy = true;
-        if (instruction->instruction_type == STORE_INST) l1_write_busy = true;
+    if (instruction->instruction_type == LOAD_INST) read_port_used = true;
+    if (instruction->instruction_type == STORE_INST) write_port_used = true;
 
         pipeline_stages[4].push_back(instruction);
         pipeline_stages[3].pop_front();
