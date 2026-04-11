@@ -12,5 +12,5 @@ From `src/`:
 
 ```bash
 make
-./cpu_simulator traces/sample.trace 0 100 5
+./proj traces/sample.trace 0 100 5
 ```
