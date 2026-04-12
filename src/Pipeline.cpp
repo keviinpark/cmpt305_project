@@ -187,7 +187,7 @@ void Pipeline::process_MEM()
             instruction->cycles_remaining = get_mem_cycles(instruction->instruction_type) - 1;
         }
 
-        // Mark port as used whether this is a fresh arrival or a continuation
+        // Mark port as used whether this is a new arrival or continuation (depth)
         if (instruction->instruction_type == LOAD_INST)  read_port_used  = true;
         if (instruction->instruction_type == STORE_INST) write_port_used = true;
 
