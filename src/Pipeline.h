@@ -17,9 +17,6 @@ class Pipeline
         /* 5 stages of the pipeline */
         std::deque<Instruction*> pipeline_stages[5]; 
 
-        /* Maps PC to most recent dynamic instruction instance */
-        std::unordered_map<uint32_t, Instruction*> last_instance;
-
         /* Flags for resource availability */
         bool alu_busy, fp_busy, branch_busy, l1_read_busy, l1_write_busy;
 
