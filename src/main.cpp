@@ -16,10 +16,16 @@ int main(int argc, char* argv[]) {
     long long inst_count  = std::stoll(argv[3]);
     int pipeline_depth   = std::stoi(argv[4]); 
 
+    if (pipeline_depth < 1 || pipeline_depth > 4)
+	{
+		std::cerr << "Error: pipeline depth D must be between 1 and 4." << std::endl;
+		return -1;
+	}
+
     // Initialize and run
     Simulation sim(trace_file, start_inst, inst_count, pipeline_depth);
     sim.run_simulation();
-    // sim.print_stats();
+    sim.print_stats();
 
     return 0;
 }

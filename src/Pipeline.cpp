@@ -1,112 +1,96 @@
 #include "Pipeline.h"
+#include <iostream>
 
-int Pipeline::get_ex_cycles(int instruction_type)
+int Pipeline::get_ex_cycles(InstructionType type) 
 {
-    switch (instruction_type)
-    {
-        case 2:
-            return (depth_config == 2 || depth_config == 4) ? 2 : 1;
-        default: 
-            return 1;
+    if (type == FP_INST && (depth_config == 2 || depth_config == 4)) {
+        return 2;
     }
+    return 1; /* Default is 1 cycle per stage */
 }
 
-int Pipeline::get_mem_cycles(int instruction_type)
+int Pipeline::get_mem_cycles(InstructionType type)
 {
-    switch (instruction_type)
-    {
-        case 4:
-            return (depth_config == 3 || depth_config == 4) ? 3 : 1;
-        default: 
-            return 1;
+    if (type == LOAD_INST && (depth_config == 3 || depth_config == 4)) {
+        return 3;
     }
+    return 1; /* Default is 1 cycle per stage */
 }
 
-bool Pipeline::check_unit_availability(int instruction_type) const
+bool Pipeline::check_unit_avail(InstructionType instruction_type)
 {
     switch (instruction_type)
     {
-        case 1: return !alu_busy;
-        case 2: return !fp_busy;
-        case 3: return !branch_busy;
-        case 4: return true;
-        case 5: return true;
+        case INT_INST: return !alu_busy;
+        case FP_INST: return !fp_busy;
+        case BRANCH_INST: return !branch_busy;
+        case LOAD_INST: return !l1_read_busy;
+        case STORE_INST: return !l1_write_busy;
         default: return true;
     }
 }
 
-void Pipeline::reserve_unit(int instruction_type)
+void Pipeline::reserve_unit(InstructionType instruction_type)
 {
     switch (instruction_type)
     {
-        case 1: alu_busy = true; break;
-        case 2: fp_busy = true; break;
-        case 3: branch_busy = true; break;
-        case 4: break;
-        case 5: break;
+        case INT_INST: alu_busy = true; break;
+        case FP_INST: fp_busy = true; break;
+        case BRANCH_INST: break;
+        case LOAD_INST: break;
+        case STORE_INST: break;
         default: break;
     }
 }
 
-void Pipeline::clear_unit_lock(const Instruction* instruction)
-{
-    if (instruction == nullptr)
-    {
-        return;
-    }
-
-    switch (instruction->instruction_type)
-    {
-        case 1: alu_busy = false; break;
-        case 2: fp_busy = false; break;
-        case 3: branch_busy = false; break;
-        case 4: l1_read_busy = false; break;
-        case 5: l1_write_busy = false; break;
-        default: break;
-    }
-}
-
-bool Pipeline::is_stalled() const
+bool Pipeline::is_stalled()
 {
     return branch_stall;
 }
 
-void Pipeline::set_branch_stall(bool stall)
-{
-    branch_stall = stall;
-}
-
 void Pipeline::insert_instruction(Instruction* instruction)
 {
-    if (instruction == nullptr)
-    {
-        return;
-    }
-
     instruction->current_stage = NOT_STARTED;
     pipeline_stages[0].push_back(instruction);
 }
 
-bool Pipeline::is_done() const
+bool Pipeline::is_done() 
 {
-    for (const auto& stage : pipeline_stages)
+    bool empty = true;
+    for (int i = 0; i < 5; ++i)
     {
-        if (!stage.empty())
-        {
-            return false;
+        if (!pipeline_stages[i].empty()) {
+            empty = false;
         }
     }
-    return true;
+    
+    if (!pipeline_stages[0].empty()) {
+        empty = false;
+    }
+    
+    return empty;
 }
 
 
 void Pipeline::process_IF()
 {
+
+    if (branch_stall) return; /* Stop from moving currently fetched instructions from IF to ID if there is a branch */
+
     int moved = 0;
 
     while (!pipeline_stages[0].empty() && moved < 2)
     {
         Instruction* instruction = pipeline_stages[0].front();
+
+        if (instruction->instruction_type == BRANCH_INST) {
+            branch_stall = true;
+            instruction->current_stage = IF_STAGE;
+            pipeline_stages[1].push_back(instruction);
+            pipeline_stages[0].pop_front();
+            break; 
+        }
+
         instruction->current_stage = IF_STAGE;
         pipeline_stages[1].push_back(instruction);
         pipeline_stages[0].pop_front();
@@ -133,7 +117,7 @@ void Pipeline::process_ID()
             }
         }
 
-        bool unit_available = check_unit_availability(instruction->instruction_type);
+        bool unit_available = check_unit_avail(instruction->instruction_type);
 
         if (data_ready && unit_available)
         {
@@ -172,6 +156,11 @@ void Pipeline::process_EX()
 
         if (instruction->instruction_type == BRANCH_INST) {
             branch_stall = false;
+        }
+        else if (instruction->instruction_type == INT_INST) {
+            alu_busy = false;
+        } else if (instruction->instruction_type == FP_INST) {
+            fp_busy = false;
         }
 
         pipeline_stages[3].push_back(instruction);
@@ -215,14 +204,14 @@ void Pipeline::process_MEM()
     }
 }
 
-void Pipeline::process_WB()
+void Pipeline::process_WB(long long* instruction_type_count)
 {
     int retired = 0;
     while (!pipeline_stages[4].empty() && retired < 2) {
         Instruction* instruction = pipeline_stages[4].front();
         instruction->current_stage = WB_STAGE; // Retired
 
-        clear_unit_lock(instruction);
+        instruction_type_count[instruction->instruction_type]++;
         
         pipeline_stages[4].pop_front();
         retired++;

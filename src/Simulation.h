@@ -22,18 +22,22 @@ class Simulation
         int pipeline_depth;
         long long cycle_count;
         Pipeline cpu;
+        long long instruction_type_count[6] = {0}; //  INT, FP, BR, LD, ST
 
-        bool parse_trace_window();
-        static bool parse_trace_line(const std::string& line,
-                                     uint32_t& program_counter,
-                                     int& instruction_type,
-                                     std::vector<uint32_t>& dependency_pcs);
-        void print_final_report(std::size_t simulated_count) const;
-        static double get_frequency_ghz(int depth_config);
+        /* Pipeline Depth affects CPU frequency */
+        double get_frequency() {
+            if (pipeline_depth == 2) return 1.2;
+            if (pipeline_depth == 3) return 1.7;
+            if (pipeline_depth == 4) return 1.8;
+            return 1.0;
+        }
+
+        bool load_trace();
 
     public:
-        Simulation(const std::string& trace_file, long long start_inst, long long inst_count, int pipeline_depth);
+        Simulation(std::string& trace_file, long long start_inst, long long inst_count, int pipeline_depth);
         ~Simulation();
+        void print_stats();
 
         void run_simulation();
 };

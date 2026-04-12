@@ -26,21 +26,19 @@ class Pipeline
         bool branch_stall;
 
         int depth_config;
-        int get_ex_cycles(int instruction_type);
-        int get_mem_cycles(int instruction_type);
+        int get_ex_cycles(InstructionType instruction_type);
+        int get_mem_cycles(InstructionType instruction_type);
 
-        bool check_unit_availability(int instruction_type) const;
-        void reserve_unit(int instruction_type);
-        void clear_unit_lock(const Instruction* instruction);
-
+        bool check_unit_avail(InstructionType instruction_type);
+        void reserve_unit(InstructionType instruction_type);
 
         
     public:
         Pipeline (int d_config) : alu_busy(false), fp_busy(false), branch_busy(false), l1_read_busy(false), l1_write_busy(false), branch_stall(false), depth_config(d_config) {}
 
-        void advance_pipeline()
+        void advance_pipeline(long long* instruction_type_count)
         {
-            process_WB();
+            process_WB(instruction_type_count);
             process_MEM();
             process_EX();
             process_ID();
@@ -51,12 +49,11 @@ class Pipeline
         void process_ID();
         void process_EX();
         void process_MEM();
-        void process_WB();
+        void process_WB(long long* instruction_type_count);
 
-        bool is_stalled() const;
-        void set_branch_stall(bool stall);
+        bool is_stalled();
         void insert_instruction(Instruction* instruction);
-        bool is_done() const;
+        bool is_done();
 
 };
 
