@@ -39,7 +39,7 @@ bool Simulation::load_trace() {
         std::cerr << "Error: Couldn't open file: " << trace_file << std::endl;
         return false;
     }
-    std::unordered_map<uint32_t, Instruction*> last_seen;
+    std::unordered_map<uint64_t, Instruction*> last_seen;
     
     std::string line;
     long long current_idx = 0;
@@ -89,7 +89,7 @@ bool Simulation::load_trace() {
 void Simulation::print_stats() {
 	
     double freq_ghz = get_frequency();
-    double execution_time_ms = (cycle_count / (freq_ghz * 1e9)) * 1000.0;
+    double execution_time_ms = (cycle_count / freq_ghz) / 1e6;
     long long total_instructions = 0;
     for(int i = 1; i <= 5; i++) 
 	{
@@ -143,11 +143,6 @@ void Simulation::run_simulation()
 				Instruction* next_instruction = instructions[issued];
 				cpu.insert_instruction(next_instruction);
 				++issued;
-
-				if (next_instruction->instruction_type == BRANCH_INST)
-				{
-					break;
-				}
 			}
 		}
 		++cycle_count;

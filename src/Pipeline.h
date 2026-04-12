@@ -17,24 +17,24 @@ class Pipeline
         /* 5 stages of the pipeline */
         std::deque<Instruction*> pipeline_stages[5]; 
 
-        /* Flags for resource availability */
-        bool alu_busy, fp_busy, branch_busy, l1_read_busy, l1_write_busy;
-
         bool branch_stall;
+        bool clear_branch_stall;
 
         int depth_config;
         int get_ex_cycles(InstructionType instruction_type);
         int get_mem_cycles(InstructionType instruction_type);
 
-        bool check_unit_avail(InstructionType instruction_type);
-        void reserve_unit(InstructionType instruction_type);
-
         
     public:
-        Pipeline (int d_config) : alu_busy(false), fp_busy(false), branch_busy(false), l1_read_busy(false), l1_write_busy(false), branch_stall(false), depth_config(d_config) {}
+        Pipeline (int d_config) : branch_stall(false), clear_branch_stall(false), depth_config(d_config) {}
 
         void advance_pipeline(long long* instruction_type_count)
         {
+            if (clear_branch_stall)
+            {
+                branch_stall = false;
+                clear_branch_stall = false;
+            }
             process_WB(instruction_type_count);
             process_MEM();
             process_EX();

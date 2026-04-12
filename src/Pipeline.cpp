@@ -17,32 +17,6 @@ int Pipeline::get_mem_cycles(InstructionType type)
     return 1; /* Default is 1 cycle per stage */
 }
 
-bool Pipeline::check_unit_avail(InstructionType instruction_type)
-{
-    switch (instruction_type)
-    {
-        case INT_INST: return !alu_busy;
-        case FP_INST: return !fp_busy;
-        case BRANCH_INST: return !branch_busy;
-        case LOAD_INST: return !l1_read_busy;
-        case STORE_INST: return !l1_write_busy;
-        default: return true;
-    }
-}
-
-void Pipeline::reserve_unit(InstructionType instruction_type)
-{
-    switch (instruction_type)
-    {
-        case INT_INST: alu_busy = true; break;
-        case FP_INST: fp_busy = true; break;
-        case BRANCH_INST: break;
-        case LOAD_INST: break;
-        case STORE_INST: break;
-        default: break;
-    }
-}
-
 bool Pipeline::is_stalled()
 {
     return branch_stall;
@@ -78,28 +52,26 @@ void Pipeline::process_IF()
     if (branch_stall) return; /* Stop from moving currently fetched instructions from IF to ID if there is a branch */
 
     int moved = 0;
-
     while (!pipeline_stages[0].empty() && moved < 2)
     {
         Instruction* instruction = pipeline_stages[0].front();
-
-        if (instruction->instruction_type == BRANCH_INST) {
-            branch_stall = true;
-            instruction->current_stage = IF_STAGE;
-            pipeline_stages[1].push_back(instruction);
-            pipeline_stages[0].pop_front();
-            break; 
-        }
-
         instruction->current_stage = IF_STAGE;
         pipeline_stages[1].push_back(instruction);
         pipeline_stages[0].pop_front();
         moved++;
+
+        if (instruction->instruction_type == BRANCH_INST) {
+            branch_stall = true;
+            break;
+        }
     }
 }
 
 void Pipeline::process_ID()
 {
+    bool int_used = false;
+    bool fp_used = false;
+    bool branch_used = false;
     int moved = 0;
     while (!pipeline_stages[1].empty() && moved < 2)
     {
@@ -110,18 +82,43 @@ void Pipeline::process_ID()
         bool data_ready = true;
         for (Instruction* dependency : instruction->dependencies)
         {
-            if (dependency->current_stage < MEM_STAGE)
+            if (!dependency) continue;
+
+            if (dependency->instruction_type == LOAD_INST || dependency->instruction_type == STORE_INST) 
             {
-                data_ready = false;
-                break;
+                if (dependency->current_stage <= MEM_STAGE) {
+                    data_ready = false;
+                    break;
+                }
+            } else {
+                if (dependency->current_stage <= EX_STAGE) {
+                    data_ready = false;
+                    break;
+                }
             }
         }
+        bool unit_available = true;
 
-        bool unit_available = check_unit_avail(instruction->instruction_type);
+        switch (instruction->instruction_type)
+        {
+            case INT_INST:
+                unit_available = !int_used;
+                break;
+            case FP_INST:
+                unit_available = !fp_used;
+                break;
+            case BRANCH_INST:
+                unit_available = !branch_used;
+                break;
+            default:
+                break;
+        }
 
         if (data_ready && unit_available)
         {
-            reserve_unit(instruction->instruction_type);
+            if (instruction->instruction_type == INT_INST) int_used = true;
+            if (instruction->instruction_type == FP_INST) fp_used = true;
+            if (instruction->instruction_type == BRANCH_INST) branch_used = true;
 
             pipeline_stages[2].push_back(instruction);
             pipeline_stages[1].pop_front();
@@ -138,7 +135,18 @@ void Pipeline::process_ID()
 void Pipeline::process_EX()
 {
     int moved = 0;
-    while (!pipeline_stages[2].empty() && moved < 2)
+    int max_issue = 2;
+
+    if (!pipeline_stages[2].empty()) {
+        Instruction* front = pipeline_stages[2].front();
+
+        if (front->current_stage == EX_STAGE &&
+            front->cycles_remaining > 0)
+        {
+            max_issue = 1;
+        }
+    }
+    while (!pipeline_stages[2].empty() && moved < max_issue)
     {
         Instruction* instruction = pipeline_stages[2].front();
         if (instruction->current_stage != EX_STAGE)
@@ -155,12 +163,7 @@ void Pipeline::process_EX()
         }
 
         if (instruction->instruction_type == BRANCH_INST) {
-            branch_stall = false;
-        }
-        else if (instruction->instruction_type == INT_INST) {
-            alu_busy = false;
-        } else if (instruction->instruction_type == FP_INST) {
-            fp_busy = false;
+            clear_branch_stall = true;
         }
 
         pipeline_stages[3].push_back(instruction);
