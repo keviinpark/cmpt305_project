@@ -4,7 +4,7 @@ import os
 
 # --- Configuration ---
 EXECUTABLE = "./proj" 
-TRACES = ["srv_0", "compute_fp_1", "compute_int_0"] # Adjusted to common SFU names
+TRACES = ["traces/srv_0", "traces/compute_fp_1", "traces/compute_int_0"] # Adjusted to common SFU names
 DEPTHS = [1, 2, 3, 4]
 REPLICATIONS = [0, 5000000, 10000000, 15000000, 20000000, 25000000]
 INST_COUNT = 1000000
