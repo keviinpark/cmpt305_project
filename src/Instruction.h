@@ -5,16 +5,17 @@
 #include <vector>
 #include <stdio.h>
 
-
-typedef enum {
+typedef enum
+{
     INT_INST = 1,
     FP_INST = 2,
     BRANCH_INST = 3,
-    LOAD_INST = 4, 
+    LOAD_INST = 4,
     STORE_INST = 5
 } InstructionType;
 
-typedef enum {
+typedef enum
+{
     NOT_STARTED = 0,
     IF_STAGE = 1,
     ID_STAGE = 2,
@@ -23,10 +24,9 @@ typedef enum {
     WB_STAGE = 5
 } InstructionStage;
 
-
 /**
  * This struct represents a single instruction in the pipeline.
- * 
+ *
  */
 struct Instruction
 {
@@ -35,17 +35,19 @@ struct Instruction
 
     InstructionType instruction_type;
 
-    /** 
-     * List of instructions that this instruction depends on 
+    /**
+     * List of instructions that this instruction depends on
      * May be size 0-4
      */
-    std::vector<Instruction*> dependencies;
+    std::vector<Instruction *> dependencies;
 
-    InstructionStage current_stage = NOT_STARTED; 
+    InstructionStage current_stage = NOT_STARTED;
 
     /* Number of cycles remaining in the current stage depending on pipeline depth */
     int cycles_remaining = 0;
-}; 
-
+    bool ex_started = false;
+    bool mem_started = false;
+    int cycles_total = 0;
+};
 
 #endif /* INSTRUCTION_H */
