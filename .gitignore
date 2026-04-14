@@ -16,7 +16,6 @@ compute_int_0
 srv_0
 
 # Ignore compressed versions
-*.gz
 
 # Ignore large trace-like files
 *.trace
