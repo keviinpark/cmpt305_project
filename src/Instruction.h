@@ -41,7 +41,10 @@ struct Instruction
      */
     std::vector<Instruction*> dependencies;
 
-    InstructionStage current_stage = NOT_STARTED; 
+    InstructionStage current_stage = NOT_STARTED;
+
+    /* Highest pipeline stage this instruction has fully completed (used for data hazard checks) */
+    InstructionStage completed_stage = NOT_STARTED;
 
     /* Number of cycles remaining in the current stage depending on pipeline depth */
     int cycles_remaining = 0;

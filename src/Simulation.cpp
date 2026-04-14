@@ -62,13 +62,13 @@ bool Simulation::load_trace() {
         if (tokens.size() < 2) continue; // Basic safety check
 
         Instruction* instruction = new Instruction();
-        instruction->program_counter = std::stoul(tokens[0], nullptr, 16);
+        instruction->program_counter = std::stoull(tokens[0], nullptr, 16);
         instruction->instruction_type = static_cast<InstructionType>(std::stoi(tokens[1]));
 
         for (size_t i = 2; i < tokens.size(); ++i) {
             if (tokens[i].empty()) continue;
             
-            uint32_t dep_pc = std::stoul(tokens[i], nullptr, 16);
+            uint64_t dep_pc = std::stoull(tokens[i], nullptr, 16);
             
             if (last_seen.find(dep_pc) != last_seen.end()) {
                 instruction->dependencies.push_back(last_seen[dep_pc]);
@@ -134,17 +134,25 @@ void Simulation::run_simulation()
 
 	while (issued < total || !cpu.is_done())
 	{
-		cpu.advance_pipeline(instruction_type_count);
+		/* Phase 1: advance WB, MEM, EX, ID — this clears the branch stall when
+		 * a branch finishes EX, so is_stalled() reflects the updated state. */
+		cpu.advance_back_end(instruction_type_count);
 
+		/* Phase 2: feed new instructions into the IF queue while not stalled.
+		 * Doing this before process_IF ensures that in the same cycle the branch
+		 * stall clears, the new instructions are available for IF to fetch,
+		 * satisfying the spec: next instructions enter IF the cycle after branch EX. */
 		if (!cpu.is_stalled() && issued < total)
 		{
 			for (int i = 0; i < 2 && issued < total; ++i)
 			{
-				Instruction* next_instruction = instructions[issued];
-				cpu.insert_instruction(next_instruction);
+				cpu.insert_instruction(instructions[issued]);
 				++issued;
 			}
 		}
+
+		/* Phase 3: fetch from IF queue into the pipeline */
+		cpu.advance_front_end();
 		++cycle_count;
 	}
 }

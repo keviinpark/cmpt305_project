@@ -13,7 +13,7 @@ make
 echo "[smoke] Build succeeded."
 if [[ -f "$TRACE_FILE" ]]; then
   echo "[smoke] Running simulator with trace: $TRACE_FILE"
-  ./cpu_simulator "$TRACE_FILE" 0 100 5
+  ./proj "$TRACE_FILE" 0 100 1
   echo "[smoke] Run succeeded."
 else
   echo "[smoke] No trace found at $TRACE_FILE"

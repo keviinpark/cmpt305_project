@@ -30,19 +30,13 @@ void Pipeline::insert_instruction(Instruction* instruction)
 
 bool Pipeline::is_done() 
 {
-    bool empty = true;
     for (int i = 0; i < 5; ++i)
     {
         if (!pipeline_stages[i].empty()) {
-            empty = false;
+            return false;
         }
     }
-    
-    if (!pipeline_stages[0].empty()) {
-        empty = false;
-    }
-    
-    return empty;
+    return true;
 }
 
 
@@ -78,20 +72,26 @@ void Pipeline::process_ID()
         Instruction* instruction = pipeline_stages[1].front();
         instruction->current_stage = ID_STAGE;
 
-        /* Check data hazards */
+        /* Check data hazards:
+         * Use completed_stage (not current_stage) so that an instruction whose
+         * dependency exits EX/MEM in the same cycle (via process_EX/process_MEM
+         * which run before process_ID) is correctly seen as ready.
+         */
         bool data_ready = true;
         for (Instruction* dependency : instruction->dependencies)
         {
             if (!dependency) continue;
 
-            if (dependency->instruction_type == LOAD_INST || dependency->instruction_type == STORE_INST) 
+            if (dependency->instruction_type == LOAD_INST || dependency->instruction_type == STORE_INST)
             {
-                if (dependency->current_stage <= MEM_STAGE) {
+                /* Satisfied after dep completes MEM stage */
+                if (dependency->completed_stage < MEM_STAGE) {
                     data_ready = false;
                     break;
                 }
             } else {
-                if (dependency->current_stage <= EX_STAGE) {
+                /* Satisfied after dep completes EX stage */
+                if (dependency->completed_stage < EX_STAGE) {
                     data_ready = false;
                     break;
                 }
@@ -134,26 +134,29 @@ void Pipeline::process_ID()
 
 void Pipeline::process_EX()
 {
+    bool int_used = false;
+    bool fp_used = false;
+    bool branch_used = false;
+
     int moved = 0;
-    int max_issue = 2;
-
-    if (!pipeline_stages[2].empty()) {
-        Instruction* front = pipeline_stages[2].front();
-
-        if (front->current_stage == EX_STAGE &&
-            front->cycles_remaining > 0)
-        {
-            max_issue = 1;
-        }
-    }
-    while (!pipeline_stages[2].empty() && moved < max_issue)
+    while (!pipeline_stages[2].empty() && moved < 2)
     {
         Instruction* instruction = pipeline_stages[2].front();
         if (instruction->current_stage != EX_STAGE)
         {
+            /* Structural hazard: only one of each functional unit per cycle */
+            if (instruction->instruction_type == INT_INST && int_used) break;
+            if (instruction->instruction_type == FP_INST && fp_used) break;
+            if (instruction->instruction_type == BRANCH_INST && branch_used) break;
+
             instruction->current_stage = EX_STAGE;
             instruction->cycles_remaining = get_ex_cycles(instruction->instruction_type) - 1;
         }
+
+        /* Mark unit as used whether this is a new arrival or continuation */
+        if (instruction->instruction_type == INT_INST) int_used = true;
+        if (instruction->instruction_type == FP_INST) fp_used = true;
+        if (instruction->instruction_type == BRANCH_INST) branch_used = true;
 
         if (instruction->cycles_remaining > 0)
         {
@@ -166,6 +169,9 @@ void Pipeline::process_EX()
             clear_branch_stall = true;
         }
 
+        /* Mark EX as completed so data-hazard checks in process_ID
+         * (which runs after process_EX) see this instruction as done with EX. */
+        instruction->completed_stage = EX_STAGE;
         pipeline_stages[3].push_back(instruction);
         pipeline_stages[2].pop_front();
         moved++;
@@ -201,6 +207,9 @@ void Pipeline::process_MEM()
             break;
         }
 
+        /* Mark MEM as completed so data-hazard checks in process_ID
+         * (which runs after process_MEM) see this instruction as done with MEM. */
+        instruction->completed_stage = MEM_STAGE;
         pipeline_stages[4].push_back(instruction);
         pipeline_stages[3].pop_front();
         moved++;
