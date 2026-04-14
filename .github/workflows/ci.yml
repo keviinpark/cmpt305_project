@@ -35,7 +35,7 @@ jobs:
           EOF
 
       - name: Smoke run (D=1)
-        run: ./src/cpu_simulator tests/ci_tiny_trace.csv 0 6 1
+        run: ./src/proj tests/ci_tiny_trace.csv 0 6 1
 
       - name: Smoke run with offset (D=2)
-        run: ./src/cpu_simulator tests/ci_tiny_trace.csv 3 3 2
+        run: ./src/proj tests/ci_tiny_trace.csv 3 3 2
